@@ -1,0 +1,11 @@
+*       text auto
+*.pyd   binary
+*.png   binary
+*.jpg   binary
+*.pdf   binary
+*.ico   binary
+*.py    text
+*.c     text
+*.rst   text
+*.yaml  text
+
