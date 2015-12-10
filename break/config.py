@@ -7,23 +7,23 @@ import yaml
 items = []
 _by_name = {}
 
+CONFIG_NAME = '.break.yaml'
+
 def save():
     config_as_dict = { item.name : item.value for item in items if item.non_default }
-    with open('.break-config', 'w') as config_file:
+    with open(CONFIG_NAME, 'w') as config_file:
         config_file.write('# BREAK generated configuration file\n')
         config_file.write('# feel free to update values here, it could be fun!\n')
         config_file.write('# if things break, then you are doing great!\n')
-        config_file.write(yaml.dump(config_as_dict))
+        config_file.write(yaml.dump(config_as_dict, default_flow_style=False))
 
 def load():
-    if os.path.exists('.break-config'):
+    if os.path.exists(CONFIG_NAME):
         conf = {}
-        with open('.break-config', 'r') as config_file:
+        with open(CONFIG_NAME, 'r') as config_file:
             conf = yaml.load(config_file)
-        for kk, vv in _by_name.items():
-            _by_name[kk] = vv
-
-
+        for kk, vv in conf.items():
+            _by_name[kk].value = vv
 
 
 class ConfigItemAction(argparse.Action):
@@ -33,7 +33,7 @@ class ConfigItemAction(argparse.Action):
         setattr(namespace, self.dest, values)
         _by_name[option_string].value = values
 
-        
+
 def add_command_line_args(parser):
     global items
     for item in items:
@@ -48,7 +48,7 @@ def print_config():
     item_width = max(len(item.name) for item in items)
     fmt = '{{:<{}}}  {{}}'.format(item_width)
     for item in items:
-        print fmt.format(item.name, item.value)
+        print fmt.format(item.name, item)
 
 
 class ConfigItem(object):
@@ -64,15 +64,15 @@ class ConfigItem(object):
 
     @property
     def value(self):
-        return self._value or self.default_value
-
-    @property
-    def non_default(self):
-        return self._value is not None
+        return self._value if self._value != None else self.default_value
 
     @value.setter
     def value(self, val):
         self._value = val
+
+    @property
+    def non_default(self):
+        return self._value is not None
 
     def __str__(self):
         return self.value
