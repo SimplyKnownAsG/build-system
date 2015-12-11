@@ -3,6 +3,7 @@ import inspect
 
 from . import config
 from . import objectives
+from . import compilers # used when building... passed through locals
 
 
 class Action(object):
@@ -75,6 +76,9 @@ class Build(Action):
                 'build whatever break knows about')
 
     def add_arguments(self, parser):
+        parser.add_argument('--flatten', '-F',
+                help='Also list flattened objectives (ignores the absence of --all)',
+                action='store_true')
         parser.add_argument('--list', '-l',
                 help='list known objectives, excluding object files, and exit',
                 action='store_true')
@@ -84,10 +88,28 @@ class Build(Action):
         parser.add_argument('--all', '-a',
                 help='modifies the behavior of list and graph to include all objectives',
                 action='store_true')
+        parser.add_argument('--debug', '-d',
+                help='use the debug compiler (and configuration)',
+                action='store_true')
 
     def invoke(self, args):
-        if args.list:
-            config.print_config()
-            exit(0)
-        config.save()
+        compilers.LIST = args.list
+        compilers.GRAPH = args.graph
+        compilers.LIST_ALL = args.all
+        compilers.FLATTEN = args.flatten
+        execfile(objectives.OBJECTIVES_FILE)
+
+class Clean(Action):
+
+    def __init__(self):
+        Action.__init__(self,
+                'clean',
+                'clean all generated files')
+
+    def add_arguments(self, parser):
+        pass
+
+    def invoke(self, args):
+        compilers.CLEAN = True
+        execfile(objectives.OBJECTIVES_FILE)
 

@@ -31,6 +31,8 @@ class ConfigItemAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
         global _by_name
         setattr(namespace, self.dest, values)
+        if isinstance(values, list):
+            values = [vv.strip() for vv in values]
         _by_name[option_string].value = values
 
 
@@ -39,6 +41,8 @@ def add_command_line_args(parser):
     for item in items:
         parser.add_argument(item.name,
                 action=ConfigItemAction,
+                nargs='*' if isinstance(item.default_value, list) else None,
+                type=str,
                 help=item.description,
                 default=item.default_value)
 
@@ -75,7 +79,7 @@ class ConfigItem(object):
         return self._value is not None
 
     def __str__(self):
-        return self.value
+        return str(self.value)
 
     def __repr__(self):
         return '<ConfigItem {}={}>'.format(self.name, self.value)

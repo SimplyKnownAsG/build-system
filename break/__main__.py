@@ -24,7 +24,7 @@ args, unknowns = parser.parse_known_args()
 #  init -- covered by config
 #  start
 
-acts = {act.name: act for act in [actions.Config(), actions.Build(), actions.AddObjective()]}
+acts = {act.name: act for act in [actions.Config(), actions.Build(), actions.AddObjective(), actions.Clean()]}
 
 try:
     action = acts[args.action]
