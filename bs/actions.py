@@ -73,7 +73,7 @@ class Build(Action):
     def __init__(self):
         Action.__init__(self,
                 'build',
-                'build whatever break knows about')
+                'build whatever build-system knows about')
 
     def add_arguments(self, parser):
         parser.add_argument('--flatten', '-F',

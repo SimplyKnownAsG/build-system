@@ -7,12 +7,12 @@ import yaml
 items = []
 _by_name = {}
 
-CONFIG_NAME = '.break.yaml'
+CONFIG_NAME = '.build-system.yaml'
 
 def save():
     config_as_dict = { item.name : item.value for item in items if item.non_default }
     with open(CONFIG_NAME, 'w') as config_file:
-        config_file.write('# BREAK generated configuration file\n')
+        config_file.write('# build-system generated configuration file\n')
         config_file.write('# feel free to update values here, it could be fun!\n')
         config_file.write('# if things break, then you are doing great!\n')
         config_file.write(yaml.dump(config_as_dict, default_flow_style=False))
