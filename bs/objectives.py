@@ -155,7 +155,7 @@ class Executable(_Library):
 
     @property
     def compile_args(self):
-        args = []
+        args = ['-static']
         for dep in self:
             args.append(dep.output)
         args += self.links
