@@ -7,6 +7,7 @@ When starting the demo, the folder should contain
 ```
 hello_world.c
 objectives.py
+.build-system.yaml
 ```
 
 and that is it.
