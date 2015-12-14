@@ -1,0 +1,11 @@
+# build-system generated configuration file
+# feel free to update values here, it could be fun!
+# if things break, then you are doing great!
+compilers:
+  c:
+    command: gcc
+    function: c
+    include_path: []
+    library_path: []
+    options:
+    - -O2
