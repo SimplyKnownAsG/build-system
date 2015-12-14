@@ -87,7 +87,22 @@ class Source(_Objective):
         self.output = source
 
 
-class Object(_Objective):
+class _CompiledMixin(object):
+
+    def __init__(self):
+        self.links = []
+
+    def link_shared(self, libname):
+        # self.links.extend(['-shared', '-l' + libname])
+        self.links.append('-l' + libname)
+
+    def link_static(self, libname):
+        self.links.extend(['-static', '-l' + libname])
+        # self.links.append('-l' + libname + StaticLibrary.EXT.value)
+
+
+class Object(_Objective, _CompiledMixin):
+
 
     DIR = config.ConfigItem('--object-dir', './obj/', 'directory to generate object files')
 
@@ -95,23 +110,41 @@ class Object(_Objective):
 
     def __init__(self, source):
         _Objective.__init__(self, os.path.basename(source))
+        _CompiledMixin.__init__(self)
         self.append(Source(source))
         self.output = os.path.join(self.DIR.value, source + self.EXT.value)
 
     @property
     def compile_args(self):
-        return ['-c', self[0].name, '-o', self.output]
+        return ['-c', self[0].name] + self.links + ['-o', self.output]
 
 
-class _Library(_Objective):
+class _Library(_Objective, _CompiledMixin):
 
     DIR = config.ConfigItem('--lib-dir', './bin/', 'directory to generate libraries')
-
-    external_libs = config.ConfigItem('--external-libs', [], 'exernal libraries to link')
     
     def __init__(self, name, *dependencies):
         _Objective.__init__(self, name, *dependencies)
+        _CompiledMixin.__init__(self)
         self.output = os.path.join(self.DIR.value, self.name + self.EXT.value)
+
+
+class SharedLibrary(_Library):
+
+    EXT = config.ConfigItem('--shared-library-ext', '.so', 'shared object extension')
+
+    @property
+    def compile_args(self):
+        args = []
+        for dep in self:
+            args.append(dep.output)
+        args += self.links
+        return args + ['-shared', '-o', self.output]
+
+
+class StaticLibrary(_Library):
+
+    EXT = config.ConfigItem('--static-library-ext', '.a', 'static library extension')
 
 
 class Executable(_Library):
@@ -125,29 +158,6 @@ class Executable(_Library):
         args = []
         for dep in self:
             args.append(dep.output)
-        for lib in self.external_libs.value:
-            args.append(lib)
+        args += self.links
         return args + ['-o', self.output]
-
-
-class SharedLibrary(_Library):
-
-    EXT = config.ConfigItem('--shared-library-ext', '.so', 'shared object extension')
-
-    @property
-    def compile_args(self):
-        args = []
-        for dep in self:
-            args.append(dep.output)
-        for lib in self.external_libs.value:
-            args.append(lib)
-        return args + ['-shared', '-o', self.output]
-
-
-class StaticLibrary(_Library):
-
-    EXT = config.ConfigItem('--static-library-ext', '.a', 'static library extension')
-
-    pass
-
 

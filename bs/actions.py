@@ -1,9 +1,8 @@
 
 import inspect
 
-from . import config
-from . import objectives
-from . import compilers # used when building... passed through locals
+from bs import config
+from bs import objectives
 
 
 class Action(object):
@@ -93,6 +92,8 @@ class Build(Action):
                 action='store_true')
 
     def invoke(self, args):
+        # import here to prevent recursive import error
+        from bs import compilers
         compilers.LIST = args.list
         compilers.GRAPH = args.graph
         compilers.LIST_ALL = args.all
@@ -110,6 +111,8 @@ class Clean(Action):
         pass
 
     def invoke(self, args):
+        # import here to prevent recursive import error
+        from bs import compilers
         compilers.CLEAN = True
         execfile(objectives.OBJECTIVES_FILE)
 
