@@ -1,5 +1,8 @@
+from __future__ import absolute_import
 
 import inspect
+import os
+import shutil
 
 from bs import config
 from bs import objectives
@@ -11,11 +14,32 @@ class Action(object):
         self.name = name
         self.description = description
 
-    def add_arguments(self):
+    def add_arguments(self, parser):
         pass
 
     def invoke(self, args):
         raise NotImplementedError
+
+
+class Demo(Action):
+
+    def __init__(self):
+        Action.__init__(self,
+                'demo',
+                'Copy the demos into the current directory')
+
+    def invoke(self, args):
+        demo_root = os.path.join(os.path.dirname(__file__), 'demos')
+        # shutil.copytree(demo_root, '.')
+        for base, dirs, files in os.walk(demo_root):
+            for ff in files:
+                src = os.path.join(base, ff)
+                dest = os.path.join(base.replace(demo_root, '.'), ff)
+                if not os.path.exists(os.path.dirname(dest)):
+                    os.makedirs(os.path.dirname(dest))
+                print('  copy {} -> {}'.format(src, dest))
+                shutil.copy(src, dest)
+
 
 
 class Config(Action):
@@ -93,11 +117,11 @@ class Build(Action):
 
     def invoke(self, args):
         # import here to prevent recursive import error
-        from bs import compilers
-        compilers.LIST = args.list
-        compilers.GRAPH = args.graph
-        compilers.LIST_ALL = args.all
-        compilers.FLATTEN = args.flatten
+        from bs import compilers_and_linkers
+        compilers_and_linkers.LIST = args.list
+        compilers_and_linkers.GRAPH = args.graph
+        compilers_and_linkers.LIST_ALL = args.all
+        compilers_and_linkers.FLATTEN = args.flatten
         execfile(objectives.OBJECTIVES_FILE)
 
 class Clean(Action):

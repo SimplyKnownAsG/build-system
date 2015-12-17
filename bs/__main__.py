@@ -4,7 +4,8 @@ import sys
 
 # these imports are necessary in order to get the configurations set up
 from bs import objectives
-from bs import compilers
+from bs import compilers_and_linkers
+from bs import builders
 from bs import actions
 from bs import config
 from bs import logger
@@ -21,14 +22,20 @@ config.load()
 #  start
 
 acts = dict()
-for act_class in [actions.Config, actions.Build, actions.AddObjective, actions.Clean,
-        compilers.Add, compilers.Remove, compilers.Modify]:
+for act_class in [actions.Config, actions.Build, actions.AddObjective, actions.Clean, actions.Demo]:
     action = act_class()
     if action.name in acts:
         logger.internal_error('an action with the name `{}` already exists.\n'
                 'Both `{}` and `{}` have the same command name, one needs to be changed or removed',
                 acts[action.name].__class__, action_class)
     acts[action.name] = action
+for action in  builders.get_actions() + compilers_and_linkers.get_actions():
+    if action.name in acts:
+        logger.internal_error('an action with the name `{}` already exists.\n'
+                'Both `{}` and `{}` have the same command name, one needs to be changed or removed',
+                acts[action.name].__class__, action_class)
+    acts[action.name] = action
+
 
 try:
     action = acts[command]

@@ -11,7 +11,8 @@ CONFIG_NAME = '.build-system.yaml'
 
 def save():
     # import here to prevent recursive import
-    from bs import compilers
+    from bs import compilers_and_linkers
+    from bs import builders
     config_as_dict = { item.name : item.value for item in items if item.non_default }
     with open(CONFIG_NAME, 'w') as config_file:
         config_file.write('# build-system generated configuration file\n')
@@ -19,21 +20,26 @@ def save():
         config_file.write('# if things break, then you are doing great!\n')
         if config_as_dict:
             config_file.write(yaml.dump(config_as_dict, default_flow_style=False))
-        compilers.save(config_file)
+        compilers_and_linkers.save(config_file)
+        builders.save(config_file)
 
 def load():
     if os.path.exists(CONFIG_NAME):
         # import here to prevent recursive import
-        from bs import compilers
+        from bs import compilers_and_linkers
+        from bs import builders
         conf = {}
         with open(CONFIG_NAME, 'r') as config_file:
             conf = yaml.load(config_file)
+        if not conf:
+            return
         for kk, vv in conf.items():
             try:
                 _by_name[kk].value = vv
             except KeyError: # ignore, not everything is a configuration item
                 pass
-        compilers.load(conf)
+        compilers_and_linkers.load(conf)
+        builders.load(conf)
 
 
 class ConfigItemAction(argparse.Action):

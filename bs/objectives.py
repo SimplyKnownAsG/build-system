@@ -3,7 +3,7 @@ import os
 import glob
 import subprocess
 
-from . import config
+from bs import config
 
 
 instances = []
@@ -68,7 +68,7 @@ class _Objective(list):
         '''This flattens until it reaches a library; theoretically a library would already be built'''
         flat = []
         for dep in self:
-            if isinstance(dep, _Library):
+            if isinstance(dep, LinkedObject):
                 # _Library dependencies are built into the library, so they wouldn't need to be built again
                 continue
             flat.extend(dep.flattened_dependencies())
@@ -119,7 +119,7 @@ class Object(_Objective, _CompiledMixin):
         return ['-c', self[0].name] + self.links + ['-o', self.output]
 
 
-class _Library(_Objective, _CompiledMixin):
+class LinkedObject(_Objective, _CompiledMixin):
 
     DIR = config.ConfigItem('--lib-dir', './bin/', 'directory to generate libraries')
     
@@ -129,7 +129,7 @@ class _Library(_Objective, _CompiledMixin):
         self.output = os.path.join(self.DIR.value, self.name + self.EXT.value)
 
 
-class SharedLibrary(_Library):
+class SharedLibrary(LinkedObject):
 
     EXT = config.ConfigItem('--shared-library-ext', '.so', 'shared object extension')
 
@@ -142,12 +142,12 @@ class SharedLibrary(_Library):
         return args + ['-shared', '-o', self.output]
 
 
-class StaticLibrary(_Library):
+class StaticLibrary(LinkedObject):
 
     EXT = config.ConfigItem('--static-library-ext', '.a', 'static library extension')
 
 
-class Executable(_Library):
+class Executable(LinkedObject):
 
     DIR = config.ConfigItem('--exec-dir', './bin/', 'directory to generate libraries')
 
