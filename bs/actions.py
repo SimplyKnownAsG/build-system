@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function
 
 import inspect
 import os
@@ -122,7 +122,7 @@ class Build(Action):
         compilers_and_linkers.GRAPH = args.graph
         compilers_and_linkers.LIST_ALL = args.all
         compilers_and_linkers.FLATTEN = args.flatten
-        execfile(objectives.OBJECTIVES_FILE)
+        exec(compile(open(objectives.OBJECTIVES_FILE).read(), objectives.OBJECTIVES_FILE, 'exec'))
 
 class Clean(Action):
 
@@ -138,5 +138,5 @@ class Clean(Action):
         # import here to prevent recursive import error
         from bs import compilers_and_linkers
         compilers_and_linkers.CLEAN = True
-        execfile(objectives.OBJECTIVES_FILE)
+        exec(compile(open(objectives.OBJECTIVES_FILE).read(), objectives.OBJECTIVES_FILE, 'exec'))
 

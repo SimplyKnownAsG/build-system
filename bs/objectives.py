@@ -25,7 +25,7 @@ class _Objective(list):
         #     self.append(dependencies)
         # else:
         for dep in dependencies:
-            if isinstance(dep, basestring):
+            if isinstance(dep, str):
                 self.append(Object(dep))
             elif isinstance(dep, list) and not isinstance(dep, _Objective): # an objective is a list...
                 raise Exception('Cannot initialize an objective with list object,\n'

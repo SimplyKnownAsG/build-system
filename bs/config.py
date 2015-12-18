@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 
 import os
 import argparse
@@ -68,7 +69,7 @@ def print_config():
     item_width = max(len(item.name) for item in items)
     fmt = '{{:<{}}}  {{}}'.format(item_width)
     for item in items:
-        print fmt.format(item.name, item)
+        print(fmt.format(item.name, item))
 
 
 class ConfigItem(object):

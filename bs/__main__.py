@@ -40,9 +40,9 @@ for action in  builders.get_actions() + compilers_and_linkers.get_actions():
 try:
     action = acts[command]
 except KeyError:
-    print 'error: did not recognize action `{}`, available options are:'.format(command)
+    print('error: did not recognize action `{}`, available options are:'.format(command))
     for action in acts.values():
-        print '  {:<15} {}'.format(action.name, action.description)
+        print('  {:<15} {}'.format(action.name, action.description))
     exit(1)
 
 parser = argparse.ArgumentParser(prog=action.name, description=action.description)
