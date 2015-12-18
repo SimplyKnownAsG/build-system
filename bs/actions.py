@@ -136,7 +136,7 @@ class Clean(Action):
 
     def invoke(self, args):
         # import here to prevent recursive import error
-        from bs import compilers
-        compilers.CLEAN = True
+        from bs import compilers_and_linkers
+        compilers_and_linkers.CLEAN = True
         execfile(objectives.OBJECTIVES_FILE)
 

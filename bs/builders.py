@@ -13,12 +13,6 @@ from bs import logger
 instances = {}
 '''Instances of builder objects'''
 
-LIST = False
-LIST_ALL = False
-FLATTEN = False
-GRAPH = False
-DEBUG = False
-CLEAN = False
 
 def get_builder(function):
     try:
@@ -27,6 +21,7 @@ def get_builder(function):
         logger.error('Could not find a builder with the function `{}`.\n'
                 'Available builders are:\n  {}\n' + Add.help,
                 function, '\n  '.join(str(builder) for builder in instances.values()))
+
 
 class Builder(object):
 
@@ -42,10 +37,11 @@ class Builder(object):
 
     def build(self, objective):
 
-        if isinstance(objective, objectives.Object):
-            self.compiler.run(objective)
-        elif isinstance(objective, objectives.LinkedObject):
-            self.linker.run(objective)
+        for item in objective.flattened_dependencies():
+            if isinstance(item, objectives.Object):
+                self.compiler.run(item)
+            elif isinstance(item, objectives.LinkedObject):
+                self.linker.run(item)
 
 
 class Add(actions.Action):
@@ -63,6 +59,7 @@ class Add(actions.Action):
     def invoke(self, args):
         builder = Builder(args.function)
         config.save()
+
 
 class Remove(actions.Action):
 
@@ -90,10 +87,8 @@ def save(stream):
             data[function] = subdata = dict()
             if builder.linker:
                 subdata['linker.function'] = builder.linker.function
-                subdata['linker.command'] = builder.linker.command
             if builder.compiler:
                 subdata['compiler.function'] = builder.compiler.function
-                subdata['compiler.command'] = builder.compiler.command
         data = { 'builders' : data }
         stream.write(yaml.dump(data, default_flow_style=False))
 
@@ -107,5 +102,10 @@ def load(config_dict):
     else:
         for builder_function, builder_params in config_dict['builders'].items():
             builder = Builder(builder_function)
+            
+            builder.compiler = compilers_and_linkers.get_compiler(builder_params.get('compiler.function',
+                builder_function))
+            builder.linker = compilers_and_linkers.get_linker(builder_params.get('linker.function', builder_function))
+
 
 

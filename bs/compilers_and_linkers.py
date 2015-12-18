@@ -20,6 +20,26 @@ GRAPH = False
 DEBUG = False
 CLEAN = False
 
+def get_compiler(function):
+    try:
+        return compilers[function]
+    except KeyError:
+        logger.error('could not find a compiler with the function `{}`.\n'
+                'The available compilers are:\n  {}\n'
+                'New compilers can be added using `add-compiler`',
+                function, '\n  '.join(str(comp) for comp in compilers.values()))
+
+def get_linker(function):
+    try:
+        return linkers[function]
+    except KeyError:
+        logger.warning('could not find a linker with the function `{}`.\n'
+                'The available linkers are:\n  {}\n'
+                'New linkers can be added using `add-linker`',
+                function, '\n  '.join(str(comp) for comp in compilers.values()))
+        
+        
+
 class CMDThing(object):
 
     def __init__(self, function, command):
@@ -32,7 +52,7 @@ class CMDThing(object):
         self.instances[function] = self
 
     def __repr__(self):
-        return '<{} {}>'.format(self.__class__.__name__, self.cmd)
+        return '<{} {}>'.format(self.__class__.__name__, self.command)
 
     def run(self, objective):
         if LIST:
@@ -59,7 +79,7 @@ class CMDThing(object):
         if not LIST and not GRAPH and not FLATTEN:
             full_cmd = [self.command] + self.options
             for pp in self.paths:
-                full_cmd.append('{}{}'.format(self.path_switch, ip))
+                full_cmd.append('{}{}'.format(self.path_switch, pp))
 
             for item in objective.flattened_dependencies():
                 if item.needs_updating:
@@ -69,6 +89,7 @@ class CMDThing(object):
                     specific_command = list(full_cmd)
                     for dep in item:
                         specific_command.append(dep.output)
+                    specific_command.append('{}{}'.format(self.output_switch, item.output))
                     print('{}'.format(' '.join(specific_command)))
                     subprocess.check_call(specific_command)
 
@@ -81,6 +102,12 @@ class Compiler(CMDThing):
 class Linker(CMDThing):
 
     instances = linkers
+
+    # def __init__(self, function, command):
+    #     CMDThing.__init__(self, function, thing)
+    #     self.shared_swtich = ''
+    #     self.static_switch = ''
+    #     self.executable_switch = ''
 
 
 class _CmdAction(actions.Action):
@@ -98,8 +125,11 @@ class _CmdAction(actions.Action):
                     self.cmd_type_name, args.function)
         return self.cmd_type(function, command)
 
-    def get_cmd(self):
-        pass
+    def get_cmd(self, function):
+        if self.cmd_type is Linker:
+            return get_linker(function)
+        else:
+            return get_compiler(function)
 
 
 class Add(_CmdAction):
@@ -124,6 +154,12 @@ class Add(_CmdAction):
                 default=[],
                 nargs='*',
                 help='include paths')
+        parser.add_argument('--output-switch', '-o',
+                type=str,
+                help='Output switch, again this one will required an escaped space if the switch starts with a `-`.')
+        parser.add_argument('--path-switch', '-I', '-L',
+                type=str,
+                help='Path switch, such as `-I` for an include path or `-L` for a linker path.')
         parser.add_argument('--options',
                 default=[],
                 nargs='*',
@@ -138,6 +174,10 @@ class Add(_CmdAction):
         config.save()
 
     def _apply_options(self, cmd, args):
+        if args.output_switch:
+            cmd.output_switch = args.output_switch.strip()
+        if args.path_switch:
+            cmd.path_switch = args.path_switch.strip()
         if args.paths:
             cmd.paths = args.paths
         if args.options:
@@ -156,18 +196,16 @@ class Modify(Add):
                 help='{} command, such as `gcc`, `ld`, `cl`, `link`, `ifort`, etc.'.format(self.cmd_type_name))
 
     def invoke(self, args):
-        global instances
-        try:
-            compiler = instances[self.cmd_type_name][args.function]
-        except KeyError:
-            logger.error('Cannot find a {0} by the function `{1}`\n'
+        cmd = self.get_cmd(args.function)
+        if cmd is None:
+            logger.error('Cannot find a {0} with the function `{1}`\n'
                 'The available {0}s are:\n  {}\n'
                 'Maybe you entered a {0} command instead of a function.\n{}',
                 self.cmd_type_name,
                 function,
                 '\n  '.join(str(compiler) for compiler in instances.get(self.cmd_type_name, {}).values()),
                 self.add_help())
-        self._apply_options(compiler, args)
+        self._apply_options(cmd, args)
         config.save()
 
 
