@@ -4,6 +4,7 @@ import glob
 import subprocess
 
 from bs import config
+from bs import logger
 
 
 instances = []
@@ -75,10 +76,6 @@ class _Objective(list):
         flat.append(self)
         return flat
 
-    @property
-    def compile_args(self):
-        raise NotImplementedError
-
 
 class Source(_Objective):
     
@@ -109,14 +106,75 @@ class Object(_Objective, _CompiledMixin):
     EXT = config.ConfigItem('--object-ext', '.obj', 'object file extension')
 
     def __init__(self, source):
-        _Objective.__init__(self, os.path.basename(source))
+        if isinstance(source, Source):
+            source_path = source.output
+            source_object = source
+        else:
+            source_path = source
+            source_object = Source(source)
+        _Objective.__init__(self, os.path.basename(source_path))
         _CompiledMixin.__init__(self)
-        self.append(Source(source))
-        self.output = os.path.join(self.DIR.value, source + self.EXT.value)
+        self.append(source_object)
+        self.output = os.path.join(self.DIR.value, source_path + self.EXT.value)
+
+
+class SwigSource(Source):
+
+    def __init__(self, interface_file, *dependencies):
+        _Objective.__init__(self, interface_file, *dependencies)
+        self.interface_file = interface_file
+        if interface_file[-2:] != '.i':
+            logger.warning('{} should be initialized with an interface file as the first argument; expected it to end '
+                'with `.i`')
+        self.args = []
+        self.cpp = False
+        self.target_language = None
 
     @property
-    def compile_args(self):
-        return ['-c', self[0].name] + self.links + ['-o', self.output]
+    def needs_updating(self):
+        my_mod_time = self.mtime
+        return any(my_mod_time <= dep[0].mtime for dep in self)
+
+    @property
+    def name(self):
+        output = os.path.splitext(self.interface_file)[0] + '_wrap.c'
+        if self.cpp:
+            output += 'xx'
+        return output
+
+    @name.setter
+    def name(self, val):
+        pass
+
+    @property
+    def output(self):
+        output = os.path.splitext(self.interface_file)[0] + '_wrap.c'
+        if self.cpp:
+            output += 'xx'
+        return output
+
+    @output.setter
+    def output(self, val):
+        pass
+
+    @property
+    def header(self):
+        return os.path.splitext(self.interface_file)[0] + '_wrap.h'
+
+    def create(self):
+        if self.needs_updating:
+            if self.target_language is None:
+                logger.error('You must specify a target language for a SwigSource\n'
+                        'This can be done in the `{}` file by setting the SwigSource.target_language attribute',
+                        OBJECTIVES_FILE)
+            cmd = ['swig', '-{}'.format(self.target_language)]
+            if self.cpp:
+                cmd.append('-c++')
+            cmd.extend(['-o', self.name])
+            cmd.extend(['-oh', self.header])
+            cmd.extend(self.args)
+            cmd.append(self.interface_file)
+            subprocess.check_call(cmd)
 
 
 class LinkedObject(_Objective, _CompiledMixin):
@@ -133,14 +191,6 @@ class SharedLibrary(LinkedObject):
 
     EXT = config.ConfigItem('--shared-library-ext', '.so', 'shared object extension')
 
-    @property
-    def compile_args(self):
-        args = []
-        for dep in self:
-            args.append(dep.output)
-        args += self.links
-        return args + ['-shared', '-o', self.output]
-
 
 class StaticLibrary(LinkedObject):
 
@@ -152,12 +202,4 @@ class Executable(LinkedObject):
     DIR = config.ConfigItem('--exec-dir', './bin/', 'directory to generate libraries')
 
     EXT = config.ConfigItem('--exec-ext', '.exe', 'executable file extension')
-
-    @property
-    def compile_args(self):
-        args = ['-static']
-        for dep in self:
-            args.append(dep.output)
-        args += self.links
-        return args + ['-o', self.output]
 
