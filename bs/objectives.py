@@ -3,6 +3,7 @@ import os
 import glob
 import subprocess
 
+import bs
 from bs import config
 from bs import logger
 
@@ -44,16 +45,12 @@ class _Objective(list):
 
     @property
     def mtime(self):
-        try:
-            return os.path.getmtime(self.output)
-        except:
-            # the file does not exist (yet?)
-            return -1
+        return bs.get_mtime(self.output)
 
     @property
     def needs_updating(self):
-        my_mod_time = self.mtime
-        return any(my_mod_time <= dep.mtime for dep in self)
+        my_mtime = self.mtime
+        return any(my_mtime <= dep.mtime for dep in self)
 
     def make(self):
         raise NotImplementedError
@@ -132,8 +129,15 @@ class SwigSource(Source):
 
     @property
     def needs_updating(self):
-        my_mod_time = self.mtime
-        return any(my_mod_time <= dep[0].mtime for dep in self)
+        my_mtime = self.mtime
+        # the dependencies of a SWIG source, are the sources of the object files. Since
+        # the dependencies are converted to Object(s), we need to grab their 1st dependency
+        # which is the actual source file.
+        result = any(my_mtime <= dep[0].mtime for dep in self)
+        # also need to consider the interface file
+        result |= my_mtime <= os.path.getmtime(self.interface_file)
+        # yes, I realize this could have been done in one line
+        return result
 
     @property
     def name(self):
@@ -162,7 +166,13 @@ class SwigSource(Source):
         return os.path.splitext(self.interface_file)[0] + '_wrap.h'
 
     def create(self):
-        if self.needs_updating:
+        from bs import compilers_and_linkers
+        if compilers_and_linkers.CLEAN:
+            for ff in [self.header, self.output]:
+                if os.path.exists(ff):
+                    print('removing {}'.format(ff))
+                    os.remove(ff)
+        elif self.needs_updating:
             if self.target_language is None:
                 logger.error('You must specify a target language for a SwigSource\n'
                         'This can be done in the `{}` file by setting the SwigSource.target_language attribute',
@@ -174,8 +184,11 @@ class SwigSource(Source):
             cmd.extend(['-oh', self.header])
             cmd.extend(self.args)
             cmd.append(self.interface_file)
+            print(' '.join(cmd))
             subprocess.check_call(cmd)
 
+    def flattened_dependencies(self):
+        return [self]
 
 class LinkedObject(_Objective, _CompiledMixin):
 
