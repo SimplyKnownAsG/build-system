@@ -1,14 +1,15 @@
 from __future__ import absolute_import
 
-import os
 import argparse
+import os
+import platform
 
 import yaml
 
 items = []
 _by_name = {}
 
-CONFIG_NAME = '.build-system.yaml'
+CONFIG_NAME = '.bs.{}.yaml'.format(platform.system().lower())
 
 def save():
     # import here to prevent recursive import

@@ -185,7 +185,10 @@ class SwigSource(Source):
             cmd.extend(self.args)
             cmd.append(self.interface_file)
             print(' '.join(cmd))
-            subprocess.check_call(cmd)
+            try:
+                subprocess.check_call(cmd)
+            except CalledProcessError:
+                logger.error('subprocess call failed')
 
     def flattened_dependencies(self):
         return [self]

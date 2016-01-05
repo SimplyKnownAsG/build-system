@@ -92,7 +92,10 @@ class CMDThing(object):
                         specific_command.append(dep.output)
                     specific_command.append('{}{}'.format(self.output_switch, item.output))
                     print('{}'.format(' '.join(specific_command)))
-                    subprocess.check_call(specific_command)
+                    try:
+                        subprocess.check_call(specific_command)
+                    except subprocess.CalledProcessError:
+                        logger.error('subprocess call failed')
 
 
 class Compiler(CMDThing):
