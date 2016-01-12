@@ -47,6 +47,7 @@ class CMDThing(object):
         self.function = function
         self.command = command
         self.options = []
+        self.post_options = []
         self.paths = []
         self.path_switch = ''
         self.output_switch = ''
@@ -91,6 +92,7 @@ class CMDThing(object):
                     for dep in item:
                         specific_command.append(dep.output)
                     specific_command.append('{}{}'.format(self.output_switch, item.output))
+                    specific_command.extend(self.post_options)
                     print('{}'.format(' '.join(specific_command)))
                     try:
                         subprocess.check_call(specific_command)
