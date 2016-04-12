@@ -5,7 +5,7 @@ import os
 import shutil
 
 from bs import config
-from bs import objectives
+import bs
 
 
 class Action(object):
@@ -69,7 +69,7 @@ class AddObjective(Action):
                 'add',
                 'add an objective, really just adds some scaffolding; '
                 'you will probably need to update the objectives file')
-        self.objectives = {m[0].lower():m[1] for m in inspect.getmembers(objectives, inspect.isclass)
+        self.objectives = {m[0].lower():m[1] for m in inspect.getmembers(bs, inspect.isclass)
                 if not m[0].startswith('_')}
 
     def add_arguments(self, parser):
@@ -88,7 +88,7 @@ class AddObjective(Action):
 
     def invoke(self, args):
         o = self.objectives[args.objective_type](args.name, args.sources)
-        objectives.save()
+        targets.save()
 
 
 class Build(Action):
@@ -122,7 +122,8 @@ class Build(Action):
         compilers_and_linkers.GRAPH = args.graph
         compilers_and_linkers.LIST_ALL = args.all
         compilers_and_linkers.FLATTEN = args.flatten
-        exec(compile(open(objectives.OBJECTIVES_FILE).read(), objectives.OBJECTIVES_FILE, 'exec'))
+        exec(compile(open(bs.TARGETS_FILE).read(), bs.TARGETS_FILE, 'exec'))
+
 
 class Clean(Action):
 
@@ -138,5 +139,6 @@ class Clean(Action):
         # import here to prevent recursive import error
         from bs import compilers_and_linkers
         compilers_and_linkers.CLEAN = True
-        exec(compile(open(objectives.OBJECTIVES_FILE).read(), objectives.OBJECTIVES_FILE, 'exec'))
+        exec(compile(open(bs.TARGETS_FILE).read(), bs.TARGETS_FILE, 'exec'))
+
 

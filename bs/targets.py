@@ -10,19 +10,13 @@ from bs import logger
 
 instances = []
 
-OBJECTIVES_FILE = 'objectives.py'
 
-def save():
-    with open(OBJECTIVES_FILE, 'a') as o_stream:
-        instances[0].save(o_stream)
-
-
-class _Target(list):
+class _Target(object):
 
     def __init__(self, name, *dependencies):
         self.name = name
-        self.output = None
-        list.__init__(self)
+        self._output = None
+        self._children = []
         # if isinstance(dependencies, basestring):
         #     self.append(dependencies)
         # else:
@@ -37,11 +31,27 @@ class _Target(list):
         global instances
         instances.append(self)
 
+    @property
+    def output(self):
+        return self._output
+
     def __repr__(self):
         return '<{} {} -- {}{}>'.format(self.__class__.__name__,
                 self.name,
                 self.output,
                 ' (out of date)' if self.needs_updating else '')
+
+    def __eq__(self, other):
+        return self.name == other.name and self.output == other.output and list(self) == list(other)
+
+    def __iter__(self):
+        return iter(self._children)
+
+    def append(self, item):
+        if not isinstance(item, _Target):
+            raise NotImplementedError('Cannot add a dependency on {} because it is not a subclass of _Target'
+                    .format(item))
+        self._children.append(item)
 
     @property
     def mtime(self):
@@ -51,16 +61,6 @@ class _Target(list):
     def needs_updating(self):
         my_mtime = self.mtime
         return any(my_mtime <= dep.mtime for dep in self)
-
-    def make(self):
-        raise NotImplementedError
-
-    def save(self, stream):
-        stream.write("{0} = {1}('{0}',\n".format(self.name, self.__class__.__name__))
-        indent = ' ' * (3 + len(self.name) + len(self.__class__.__name__))
-        for dep in self:
-            stream.write("{} '{}',\n".format(indent, dep))
-        stream.write("{})\n\n".format(indent))
 
     def flattened_dependencies(self):
         '''This flattens until it reaches a library; theoretically a library would already be built'''
@@ -78,7 +78,7 @@ class Source(_Target):
     
     def __init__(self, source):
         _Target.__init__(self, source)
-        self.output = source
+        self._output = source
 
 
 class _CompiledMixin(object):
@@ -112,7 +112,11 @@ class Object(_Target, _CompiledMixin):
         _Target.__init__(self, os.path.basename(source_path))
         _CompiledMixin.__init__(self)
         self.append(source_object)
-        self.output = os.path.join(self.DIR.value, source_path + self.EXT.value)
+        self._output = source_object.output
+
+    @property
+    def output(self):
+        return os.path.join(self.DIR.value, self._output + self.EXT.value)
 
 
 class SwigSource(Source):
@@ -192,6 +196,7 @@ class SwigSource(Source):
 
     def flattened_dependencies(self):
         return [self]
+
 
 class LinkedObject(_Target, _CompiledMixin):
 

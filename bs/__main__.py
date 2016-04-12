@@ -3,7 +3,6 @@ import argparse
 import sys
 
 # these imports are necessary in order to get the configurations set up
-from bs import objectives
 from bs import compilers_and_linkers
 from bs import builders
 from bs import actions

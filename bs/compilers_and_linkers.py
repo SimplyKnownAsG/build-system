@@ -6,9 +6,9 @@ import traceback
 
 import yaml
 
+import bs
 from bs import actions
 from bs import config
-from bs import objectives
 from bs import logger
 
 compilers = {}
@@ -60,7 +60,7 @@ class CMDThing(object):
         if LIST:
             print(objective)
             for item in objective:
-                if LIST_ALL or not isinstance(item, objectives.Object):
+                if LIST_ALL or not isinstance(item, bs.Object):
                     print('    {}'.format(item))
         if GRAPH:
             raise NotImplementedError
@@ -73,7 +73,7 @@ class CMDThing(object):
 
         if CLEAN:
             for item in objective.flattened_dependencies():
-                if not isinstance(item, objectives.Source) and os.path.exists(item.output):
+                if not isinstance(item, bs.Source) and os.path.exists(item.output):
                     print('removing {}'.format(item.output))
                     os.remove(item.output)
             return

@@ -6,9 +6,9 @@ import traceback
 
 import yaml
 
+import bs
 from bs import actions
 from bs import config
-from bs import objectives
 from bs import logger
 
 instances = {}
@@ -39,9 +39,9 @@ class Builder(object):
     def build(self, objective):
 
         for item in objective.flattened_dependencies():
-            if isinstance(item, objectives.Object):
+            if isinstance(item, bs.Object):
                 self.compiler.run(item)
-            elif isinstance(item, objectives.LinkedObject):
+            elif isinstance(item, bs.LinkedObject):
                 self.linker.run(item)
 
 
