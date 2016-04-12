@@ -17,7 +17,7 @@ def save():
         instances[0].save(o_stream)
 
 
-class _Objective(list):
+class _Target(list):
 
     def __init__(self, name, *dependencies):
         self.name = name
@@ -29,7 +29,7 @@ class _Objective(list):
         for dep in dependencies:
             if isinstance(dep, str):
                 self.append(Object(dep))
-            elif isinstance(dep, list) and not isinstance(dep, _Objective): # an objective is a list...
+            elif isinstance(dep, list) and not isinstance(dep, _Target): # an objective is a list...
                 raise Exception('Cannot initialize an objective with list object,\n'
                         'maybe you forgot to use * to convert a list to *args?')
             else:
@@ -74,10 +74,10 @@ class _Objective(list):
         return flat
 
 
-class Source(_Objective):
+class Source(_Target):
     
     def __init__(self, source):
-        _Objective.__init__(self, source)
+        _Target.__init__(self, source)
         self.output = source
 
 
@@ -95,7 +95,7 @@ class _CompiledMixin(object):
         # self.links.append('-l' + libname + StaticLibrary.EXT.value)
 
 
-class Object(_Objective, _CompiledMixin):
+class Object(_Target, _CompiledMixin):
 
 
     DIR = config.ConfigItem('--object-dir', './obj/', 'directory to generate object files')
@@ -109,7 +109,7 @@ class Object(_Objective, _CompiledMixin):
         else:
             source_path = source
             source_object = Source(source)
-        _Objective.__init__(self, os.path.basename(source_path))
+        _Target.__init__(self, os.path.basename(source_path))
         _CompiledMixin.__init__(self)
         self.append(source_object)
         self.output = os.path.join(self.DIR.value, source_path + self.EXT.value)
@@ -118,7 +118,7 @@ class Object(_Objective, _CompiledMixin):
 class SwigSource(Source):
 
     def __init__(self, interface_file, *dependencies):
-        _Objective.__init__(self, interface_file, *dependencies)
+        _Target.__init__(self, interface_file, *dependencies)
         self.interface_file = interface_file
         if interface_file[-2:] != '.i':
             logger.warning('{} should be initialized with an interface file as the first argument; expected it to end '
@@ -193,12 +193,12 @@ class SwigSource(Source):
     def flattened_dependencies(self):
         return [self]
 
-class LinkedObject(_Objective, _CompiledMixin):
+class LinkedObject(_Target, _CompiledMixin):
 
     DIR = config.ConfigItem('--lib-dir', './bin/', 'directory to generate libraries')
     
     def __init__(self, name, *dependencies):
-        _Objective.__init__(self, name, *dependencies)
+        _Target.__init__(self, name, *dependencies)
         _CompiledMixin.__init__(self)
         self.output = os.path.join(self.DIR.value, self.name + self.EXT.value)
 

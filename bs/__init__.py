@@ -14,6 +14,8 @@ def copy(source, destination):
         if get_mtime(destination) < get_mtime(source):
             print('copying {} -> {}'.format(source, destination))
             shutil.copy(source, destination)
+
+from bs.targets import *
         
 
 
