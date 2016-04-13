@@ -14,12 +14,6 @@ from bs import logger
 compilers = {}
 linkers = {}
 
-LIST = False
-LIST_ALL = False
-FLATTEN = False
-GRAPH = False
-DEBUG = False
-CLEAN = False
 
 def get_compiler(function):
     try:
@@ -57,28 +51,25 @@ class CMDThing(object):
         return '<{} {}>'.format(self.__class__.__name__, self.command)
 
     def run(self, objective):
-        if LIST:
+        if bs.LIST:
             print(objective)
             for item in objective:
                 if LIST_ALL or not isinstance(item, bs.Object):
                     print('    {}'.format(item))
-        if GRAPH:
-            raise NotImplementedError
-        if FLATTEN:
-            print('') # new line for separation
-            print('    flattened dependencies -- also lists sources')
-            print('    ----------------------')
-            for item in objective.flattened_dependencies():
-                print('    {}'.format(item))
+        # if bs.GRAPH:
+        #     raise NotImplementedError
+        # if bs.FLATTEN:
+        #     print('') # new line for separation
+        #     print('    flattened dependencies -- also lists sources')
+        #     print('    ----------------------')
+        #     for item in objective.flattened_dependencies():
+        #         print('    {}'.format(item))
 
-        if CLEAN:
+        if bs.CLEAN:
             for item in objective.flattened_dependencies():
-                if not isinstance(item, bs.Source) and os.path.exists(item.path):
-                    print('removing {}'.format(item.path))
-                    os.remove(item.path)
-            return
+                item.clean()
 
-        if not LIST and not GRAPH and not FLATTEN:
+        if bs.BUILD:
             cmd_start = [self.command] + self.options
             for pp in self.paths:
                 cmd_start.append('{}{}'.format(self.path_switch, pp))

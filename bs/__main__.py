@@ -1,51 +1,80 @@
 
-import argparse
+import click
 import sys
 
-# these imports are necessary in order to get the configurations set up
-from bs import compilers_and_linkers
-from bs import builders
-from bs import actions
+import bs
 from bs import config
-from bs import logger
 
 command = sys.argv[1] if len(sys.argv) >= 2 else 'build'
 
 # load the current user configuration
 config.load()
 
-# actions:
-#  config
-#  add (library|executable|thing)
-#  init -- covered by config
-#  start
+@click.group(name='bs', help='build system')
+def cli():
+    pass
 
-acts = dict()
-for act_class in [actions.Config, actions.Build, actions.AddObjective, actions.Clean, actions.Demo]:
-    action = act_class()
-    if action.name in acts:
-        logger.internal_error('an action with the name `{}` already exists.\n'
-                'Both `{}` and `{}` have the same command name, one needs to be changed or removed',
-                acts[action.name].__class__, action_class)
-    acts[action.name] = action
-for action in  builders.get_actions() + compilers_and_linkers.get_actions():
-    if action.name in acts:
-        logger.internal_error('an action with the name `{}` already exists.\n'
-                'Both `{}` and `{}` have the same command name, one needs to be changed or removed',
-                acts[action.name].__class__, action_class)
-    acts[action.name] = action
+@cli.command()
+def demo():
+    '''Copy the demos into the current directory'''
+    demo_root = os.path.join(os.path.dirname(__file__), 'demos')
+    # shutil.copytree(demo_root, '.')
+    for base, dirs, files in os.walk(demo_root):
+        for ff in files:
+            src = os.path.join(base, ff)
+            dest = os.path.join(base.replace(demo_root, '.'), ff)
+            if not os.path.exists(os.path.dirname(dest)):
+                os.makedirs(os.path.dirname(dest))
+            print('  copy {} -> {}'.format(src, dest))
+            shutil.copy(src, dest)
 
 
-try:
-    action = acts[command]
-except KeyError:
-    print('error: did not recognize action `{}`, available options are:'.format(command))
-    for action in acts.values():
-        print('  {:<15} {}'.format(action.name, action.description))
-    exit(1)
+@cli.command()
+@click.option('-l', '--list', is_flag=True, help='list configuration items')
+def config(list_):
+    '''Edit or intiialize the local configration'''
+    if args.list:
+        config.print_config()
+    else:
+        config.save()
 
-parser = argparse.ArgumentParser(prog=action.name, description=action.description)
-action.add_arguments(parser)
-args, unknowns = parser.parse_known_args(sys.argv[2:])
-action.invoke(args)
+@cli.command()
+@click.option('--debug', '-d',
+        help='use the debug compiler (and configuration)',
+        is_flag=True)
+def build(debug):
+    '''build whatever build-system knows about'''
+    bs.BUILD = True
+    exec(compile(open(bs.TARGETS_FILE).read(), bs.TARGETS_FILE, 'exec'))
+
+
+@cli.command()
+@click.option('--flatten', '-F',
+        help='Also list flattened objectives (ignores the absence of --all)',
+        is_flag=True)
+@click.option('--list', '-l',
+        help='list known objectives, excluding object files, and exit',
+        is_flag=True)
+@click.option('--graph', '-g',
+        help='graph known objectives, excluding object files, and exit',
+        is_flag=True)
+@click.option('--all', '-a',
+        help='modifies the behavior of list and graph to include all objectives',
+        is_flag=True)
+def list(flatten, graph, all_):
+    '''build whatever build-system knows about'''
+    bs.LIST = True
+    exec(compile(open(bs.TARGETS_FILE).read(), bs.TARGETS_FILE, 'exec'))
+
+
+@cli.command()
+@click.option('--dry-run', '-n',
+        help="don't actually delete anything, just echo'",
+        is_flag=True)
+def clean(dry_run):
+    '''clean all output files'''
+    bs.CLEAN = True
+    exec(compile(open(bs.TARGETS_FILE).read(), bs.TARGETS_FILE, 'exec'))
+
+cli(prog_name='bs')
 

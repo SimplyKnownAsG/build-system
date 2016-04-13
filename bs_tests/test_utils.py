@@ -40,3 +40,18 @@ class UtilTests(unittest.TestCase):
         bs.clean('.dirname/.hidden')
         self.assertFalse(os.path.exists('.dirname'))
 
+    def test_copy_cleans_when_cleaning(self):
+        self.assertFalse(bs.CLEAN)
+        bs.touch('somewhere/out_there')
+        self.assertTrue(os.path.exists('somewhere/out_there'))
+        self.assertFalse(os.path.exists('somewhere/out_there.copy'))
+
+        bs.copy('somewhere/out_there', 'somewhere/out_there.copy')
+        self.assertTrue(os.path.exists('somewhere/out_there.copy'))
+        bs.CLEAN = True
+        bs.copy('somewhere/out_there', 'somewhere/out_there.copy')
+        self.assertFalse(os.path.exists('somewhere/out_there.copy'))
+        bs.CLEAN = False
+        bs.clean('somewhere/out_there')
+
+

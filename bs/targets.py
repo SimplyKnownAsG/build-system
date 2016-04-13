@@ -21,11 +21,14 @@ class _Target(object):
 
     @property
     def name(self):
-        raise NotImplementedError('must be overridden in a subclass')
+        raise NotImplementedError('Must be overriden for {}'.format(self))
 
     @property
     def path(self):
-        raise NotImplementedError('must be overridden in a subclass')
+        raise NotImplementedError('Must be overriden for {}'.format(self))
+
+    def clean(self):
+        raise NotImplementedError('Must be overriden for {}'.format(self))
 
     def __repr__(self):
         return '<{} {} -- {}{}>'.format(self.__class__.__name__,
@@ -86,6 +89,9 @@ class Source(_Target):
     def path(self):
         return self._path
 
+    def clean(self):
+        pass
+
     def find_dependencies(self):
         for fname in bs.find_dependencies(self.path):
             self.append(Source(fname))
@@ -104,8 +110,11 @@ class _CompiledMixin(object):
         self.links.extend(['-static', '-l' + libname])
         # self.links.append('-l' + libname + StaticLibrary.EXT.value)
 
+    def clean(self):
+        bs.clean(self.path)
 
-class Object(_Target, _CompiledMixin):
+
+class Object(_CompiledMixin, _Target):
 
 
     DIR = config.ConfigItem('--object-dir', './obj/', 'directory to generate object files')
@@ -164,9 +173,13 @@ class SwigSource(Source):
             path += 'xx'
         return path
 
+    def clean(self):
+        bs.clean(self.path)
+        bs.clean(self.header)
+
     def create(self):
         from bs import compilers_and_linkers
-        if compilers_and_linkers.CLEAN:
+        if bs.CLEAN:
             for ff in [self.header, self.path]:
                 if os.path.exists(ff):
                     print('removing {}'.format(ff))
@@ -190,7 +203,7 @@ class SwigSource(Source):
                 logger.error('subprocess call failed')
 
 
-class LinkedObject(_Target, _CompiledMixin):
+class LinkedObject(_CompiledMixin, _Target):
 
     DIR = config.ConfigItem('--lib-dir', './bin/', 'directory to generate libraries')
     
