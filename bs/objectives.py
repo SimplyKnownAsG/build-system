@@ -187,7 +187,7 @@ class SwigSource(Source):
             print(' '.join(cmd))
             try:
                 subprocess.check_call(cmd)
-            except CalledProcessError:
+            except subprocess.CalledProcessError:
                 logger.error('subprocess call failed')
 
     def flattened_dependencies(self):
