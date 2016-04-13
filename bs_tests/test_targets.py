@@ -244,6 +244,43 @@ class SwigSourceTests(TargetTestSkeleton):
         self.assertNotEqual(id(src2), id(self.target))
 
 
+class LinkedObjectTests(TargetTestSkeleton):
+
+    def setUp(self):
+        self.so = bs.SharedLibrary('temphello', 'tempmain.c', bs.Source('temphello.c'))
+        self.a = bs.StaticLibrary('temphello', 'tempmain.c', bs.Source('temphello.c'))
+
+    def test_name(self):
+        self.assertEqual('temphello', self.so.name)
+        self.assertEqual('temphello', self.a.name)
+
+    def test_path(self):
+        self.assertEqual('./bin/temphello.so', self.so.path)
+        self.assertEqual('./bin/temphello.a', self.a.path)
+
+    def test_mtime(self):
+        self.assertEqual(self.so.mtime, -1)
+        self.assertEqual(self.a.mtime, -1)
+
+    def test_needs_updating(self):
+        self.assertTrue(self.so.needs_updating)
+        self.assertTrue(self.a.needs_updating)
+
+    def test_append(self):
+        '''Source.append fails'''
+        with self.assertRaises(TypeError):
+            self.so.append('hi')
+        self.a.append(bs.Source('s'))
+
+    def test_iter(self):
+        for target in [self.so, self.a]:
+            self.assertEqual('tempmain.c', target[0].path)
+            self.assertEqual('temphello.c', target[1].path)
+
+    def test_equal(self):
+        self.assertEqual(self.so.name, self.a.name)
+        self.assertNotEqual(self.so, self.a)
+
 
 del TargetTestSkeleton
 

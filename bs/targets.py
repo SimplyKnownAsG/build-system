@@ -64,7 +64,7 @@ class _Target(object):
         '''This flattens until it reaches a library; theoretically a library would already be built'''
         flat = []
         for dep in self:
-            if isinstance(dep, LinkedObject):
+            if isinstance(dep, _LinkedObject):
                 # _Library dependencies are built into the library, so they wouldn't need to be built again
                 continue
             flat.extend(dep.flattened_dependencies())
@@ -189,31 +189,43 @@ class SwigSource(Source):
             except subprocess.CalledProcessError:
                 logger.error('subprocess call failed')
 
-    def flattened_dependencies(self):
-        return [self]
 
-
-class LinkedObject(_Target, _CompiledMixin):
+class _LinkedObject(_Target, _CompiledMixin):
 
     DIR = config.ConfigItem('--lib-dir', './bin/', 'directory to generate libraries')
     
     def __init__(self, name, *dependencies):
-        _Target.__init__(self, name, *dependencies)
+        _Target.__init__(self)
         _CompiledMixin.__init__(self)
-        self.path = os.path.join(self.DIR.value, self.name + self.EXT.value)
+        self._name = name
+        if isinstance(dependencies, basestring):
+            dependencies = [dependencies]
+        for dep in dependencies:
+            if isinstance(dep, _Target):
+                self.append(dep)
+            elif isinstance(dep, basestring):
+                self.append(Source(dep))
+
+    @property
+    def path(self):
+        return os.path.join(self.DIR.value, self.name + self.EXT.value)
+
+    @property
+    def name(self):
+        return self._name
 
 
-class SharedLibrary(LinkedObject):
+class SharedLibrary(_LinkedObject):
 
     EXT = config.ConfigItem('--shared-library-ext', '.so', 'shared object extension')
 
 
-class StaticLibrary(LinkedObject):
+class StaticLibrary(_LinkedObject):
 
     EXT = config.ConfigItem('--static-library-ext', '.a', 'static library extension')
 
 
-class Executable(LinkedObject):
+class Executable(_LinkedObject):
 
     DIR = config.ConfigItem('--exec-dir', './bin/', 'directory to generate libraries')
 
