@@ -2,6 +2,7 @@
 import os
 import glob
 import subprocess
+import re
 
 import bs
 from bs import config
@@ -13,49 +14,46 @@ instances = []
 
 class _Target(object):
 
-    def __init__(self, name, *dependencies):
-        self.name = name
-        self._output = None
+    def __init__(self):
         self._children = []
-        # if isinstance(dependencies, basestring):
-        #     self.append(dependencies)
-        # else:
-        for dep in dependencies:
-            if isinstance(dep, str):
-                self.append(Object(dep))
-            elif isinstance(dep, list) and not isinstance(dep, _Target): # an objective is a list...
-                raise Exception('Cannot initialize an objective with list object,\n'
-                        'maybe you forgot to use * to convert a list to *args?')
-            else:
-                self.append(dep)
         global instances
         instances.append(self)
 
     @property
-    def output(self):
-        return self._output
+    def name(self):
+        raise NotImplementedError('must be overridden in a subclass')
+
+    @property
+    def path(self):
+        raise NotImplementedError('must be overridden in a subclass')
 
     def __repr__(self):
         return '<{} {} -- {}{}>'.format(self.__class__.__name__,
                 self.name,
-                self.output,
+                self.path,
                 ' (out of date)' if self.needs_updating else '')
 
     def __eq__(self, other):
-        return self.name == other.name and self.output == other.output and list(self) == list(other)
+        return self.name == other.name and self.path == other.path and list(self) == list(other)
 
     def __iter__(self):
         return iter(self._children)
 
+    def __len__(self):
+        return len(self._children)
+
+    def __getitem__(self, index):
+        return self._children[0]
+
     def append(self, item):
         if not isinstance(item, _Target):
-            raise NotImplementedError('Cannot add a dependency on {} because it is not a subclass of _Target'
+            raise TypeError('Cannot add a dependency on {} because it is not a subclass of _Target'
                     .format(item))
         self._children.append(item)
 
     @property
     def mtime(self):
-        return bs.get_mtime(self.output)
+        return bs.get_mtime(self.path)
 
     @property
     def needs_updating(self):
@@ -77,8 +75,20 @@ class _Target(object):
 class Source(_Target):
     
     def __init__(self, source):
-        _Target.__init__(self, source)
-        self._output = source
+        _Target.__init__(self)
+        self._path = source
+
+    @property
+    def name(self):
+        return self._path
+
+    @property
+    def path(self):
+        return self.name
+
+    def find_dependencies(self):
+        for fname in bs.find_dependencies(self.path):
+            self.append(Source(fname))
 
 
 class _CompiledMixin(object):
@@ -103,20 +113,19 @@ class Object(_Target, _CompiledMixin):
     EXT = config.ConfigItem('--object-ext', '.obj', 'object file extension')
 
     def __init__(self, source):
-        if isinstance(source, Source):
-            source_path = source.output
-            source_object = source
-        else:
-            source_path = source
-            source_object = Source(source)
-        _Target.__init__(self, os.path.basename(source_path))
+        if not isinstance(source, Source):
+            raise Exception('Cannot create an Object with non-Souce input')
+        _Target.__init__(self)
         _CompiledMixin.__init__(self)
-        self.append(source_object)
-        self._output = source_object.output
+        self.append(source)
 
     @property
-    def output(self):
-        return os.path.join(self.DIR.value, self._output + self.EXT.value)
+    def path(self):
+        return os.path.join(self.DIR.value, self[0].path + self.EXT.value)
+
+    @property
+    def name(self):
+        return self.path
 
 
 class SwigSource(Source):
@@ -172,7 +181,7 @@ class SwigSource(Source):
     def create(self):
         from bs import compilers_and_linkers
         if compilers_and_linkers.CLEAN:
-            for ff in [self.header, self.output]:
+            for ff in [self.header, self.path]:
                 if os.path.exists(ff):
                     print('removing {}'.format(ff))
                     os.remove(ff)
@@ -205,7 +214,7 @@ class LinkedObject(_Target, _CompiledMixin):
     def __init__(self, name, *dependencies):
         _Target.__init__(self, name, *dependencies)
         _CompiledMixin.__init__(self)
-        self.output = os.path.join(self.DIR.value, self.name + self.EXT.value)
+        self.path = os.path.join(self.DIR.value, self.name + self.EXT.value)
 
 
 class SharedLibrary(LinkedObject):

@@ -1,4 +1,5 @@
 
+import time
 import os
 import unittest
 import glob
@@ -10,8 +11,11 @@ class TargetTestSkeleton(unittest.TestCase):
     def tearDown(self):
         for fname in glob.glob('temp-*'):
             os.remove(fname)
+
+    def test_name(self):
+        raise NotImplementedError('must be overridden')
     
-    def test_output(self):
+    def test_path(self):
         raise NotImplementedError('must be overridden')
 
     def test_mtime(self):
@@ -35,8 +39,11 @@ class TestSource(TargetTestSkeleton):
     def setUp(self):
         self.target = bs.Source('temp-thing.cpp')
 
-    def test_output(self):
-        self.assertEqual('temp-thing.cpp', self.target.output)
+    def test_name(self):
+        self.assertEqual('temp-thing.cpp', self.target.name)
+
+    def test_path(self):
+        self.assertEqual('temp-thing.cpp', self.target.path)
 
     def test_mtime(self):
         self.assertEqual(self.target.mtime, -1)
@@ -44,22 +51,36 @@ class TestSource(TargetTestSkeleton):
     def test_needs_updating(self):
         self.assertFalse(self.target.needs_updating)
 
-        bs.touch(self.target.output)
+        bs.touch(self.target.path)
         self.assertFalse(self.target.needs_updating)
         self.assertNotEqual(self.target.mtime, -1)
 
     def test_append(self):
         '''Source.append fails'''
-        with self.assertRaises(NotImplementedError):
+        with self.assertRaises(TypeError):
             self.target.append('hi')
 
     def test_iter(self):
         self.assertEqual(0, len(list(iter(self.target))))
 
     def test_equal(self):
-        src2 = bs.Source(self.target.output)
+        src2 = bs.Source(self.target.path)
         self.assertEqual(src2, self.target)
         self.assertNotEqual(id(src2), id(self.target))
+
+    def test_find_dependencies(self):
+        bs.touch('temp-existing.h')
+        bs.touch('temp-existing-fake.h')
+        with open(self.target.path, 'w') as ff:
+            ff.write('#include "temp-existing.h"\n')
+            ff.write('// #include "temp-existing-fake.h"\n')
+            ff.write('#include "missing.h"\n')
+            ff.write('#include <iostream>\n')
+        self.assertFalse(self.target.needs_updating)
+        self.target.find_dependencies()
+        self.assertEqual(1, len(self.target))
+        self.assertEqual('temp-existing.h', self.target[0].path)
+        self.assertTrue(self.target.needs_updating)
 
 
 class TargetTests(unittest.TestCase):
@@ -75,47 +96,82 @@ class TargetTests(unittest.TestCase):
 class ObjectTests(TargetTestSkeleton):
 
     def setUp(self):
-        self.target_c = bs.Object(bs.Source('source.c')) # target from source
-        self.target_f = bs.Object('source.f') # target from string
+        self.target_c = bs.Object(bs.Source('./src/temp-source.c'))
+        self.target_f = bs.Object(bs.Source('./src/temp-source.f'))
 
-    def test_output(self):
+    def tearDown(self):
+        bs.clean('temp-*')
+        for target in [self.target_c, self.target_f]:
+            bs.clean(target.path)
+            for source in target:
+                bs.clean(source.path)
+
+    def help_name_path(self, func):
         self.assertEqual('./obj/', bs.Object.DIR.value)
         self.assertEqual('.obj', bs.Object.EXT.value)
-        self.assertEqual('./obj/source.c.obj', self.target_c.output)
-        self.assertEqual('./obj/source.f.obj', self.target_f.output)
+        self.assertEqual('./obj/./src/temp-source.c.obj', func(self.target_c))
+        self.assertEqual('./obj/./src/temp-source.f.obj', func(self.target_f))
         
         bs.Object.DIR.value = './objects/'
         bs.Object.EXT.value = '.o'
-        self.assertEqual('./objects/source.c.o', self.target_c.output)
-        self.assertEqual('./objects/source.f.o', self.target_f.output)
+        self.assertEqual('./objects/./src/temp-source.c.o', func(self.target_c))
+        self.assertEqual('./objects/./src/temp-source.f.o', func(self.target_f))
 
-    @unittest.skip('waiting...')
+        bs.Object.DIR.value = './obj/'
+        bs.Object.EXT.value = '.obj'
+
+    def test_name(self):
+        self.help_name_path(lambda obj: obj.name)
+
+    def test_path(self):
+        self.help_name_path(lambda obj: obj.path)
+
     def test_mtime(self):
-        self.assertEqual(self.target.mtime, -1)
+        self.assertEqual(self.target_c.mtime, -1)
+        self.assertEqual(self.target_f.mtime, -1)
 
-    @unittest.skip('waiting...')
+        bs.touch(self.target_c.path)
+        bs.touch(self.target_f.path)
+
+        self.assertGreater(self.target_c.mtime, -1)
+        self.assertGreater(self.target_f.mtime, -1)
+
     def test_needs_updating(self):
-        self.assertFalse(self.target.needs_updating)
+        '''A non-existent Object file always needs to be update'''
+        self.assertFalse(os.path.exists(self.target_c.path))
+        self.assertTrue(self.target_c.needs_updating)
 
-        bs.touch(self.target.output)
-        self.assertFalse(self.target.needs_updating)
-        self.assertNotEqual(self.target.mtime, -1)
+        bs.touch(self.target_c.path)
+        self.assertFalse(self.target_c.needs_updating)
+        self.assertNotEqual(self.target_c.mtime, -1)
 
-    @unittest.skip('waiting...')
+    def test_needs_updating_due_to_source(self):
+        '''An object file needs to be updated if its sources are newer'''
+        bs.touch(self.target_c.path)
+        self.assertFalse(self.target_c.needs_updating)
+        bs.touch(self.target_c[0].path) # source is newer
+        self.assertTrue(self.target_c.needs_updating)
+
+        bs.touch(self.target_c.path) # touch it...
+        while self.target_c[0].mtime >= self.target_c.mtime:
+            bs.touch(self.target_c.path) # touch it...
+        self.assertFalse(self.target_c.needs_updating)
+
     def test_append(self):
-        '''Source.append fails'''
-        with self.assertRaises(NotImplementedError):
-            self.target.append('hi')
+        with self.assertRaises(TypeError):
+            self.target_c.append('hi')
+        self.target_c.append(bs.Source('some-header.h'))
 
-    @unittest.skip('waiting...')
     def test_iter(self):
-        self.assertEqual(0, len(list(iter(self.target))))
+        self.target_c.append(bs.Source('some-header1.h'))
+        self.target_c.append(bs.Source('some-header2.h'))
+        self.target_c.append(bs.Source('some-header3.h'))
+        self.assertEqual(4, len(list(iter(self.target_c))))
 
-    @unittest.skip('waiting...')
     def test_equal(self):
-        src2 = bs.Source(self.target.output)
-        self.assertEqual(src2, self.target)
-        self.assertNotEqual(id(src2), id(self.target))
+        src2 = bs.Object(bs.Source(self.target_c[0].path))
+        self.assertEqual(src2, self.target_c)
+        self.assertNotEqual(id(src2), id(self.target_c))
 
 
 @unittest.skip('needs Object')
@@ -124,8 +180,8 @@ class SwigSourceTests(TargetTestSkeleton):
     def setUp(self):
         self.target = bs.SwigSource('bacon.i')
 
-    def test_output(self):
-        self.assertEqual('temp-thing.cpp', self.target.output)
+    def test_path(self):
+        self.assertEqual('temp-thing.cpp', self.target.path)
 
     def test_mtime(self):
         self.assertEqual(self.target.mtime, -1)
@@ -133,7 +189,7 @@ class SwigSourceTests(TargetTestSkeleton):
     def test_needs_updating(self):
         self.assertFalse(self.target.needs_updating)
 
-        bs.touch(self.target.output)
+        bs.touch(self.target.path)
         self.assertFalse(self.target.needs_updating)
         self.assertNotEqual(self.target.mtime, -1)
 
@@ -146,7 +202,7 @@ class SwigSourceTests(TargetTestSkeleton):
         self.assertEqual(0, len(list(iter(self.target))))
 
     def test_equal(self):
-        src2 = bs.Source(self.target.output)
+        src2 = bs.Source(self.target.path)
         self.assertEqual(src2, self.target)
         self.assertNotEqual(id(src2), id(self.target))
 

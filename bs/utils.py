@@ -1,5 +1,6 @@
-import os
 import glob
+import os
+import re
 
 def get_mtime(path):
     try:
@@ -44,4 +45,23 @@ def clean(fname):
         except:
             break # there was a hidden file we didn't see
         dirname = os.path.dirname(dirname)
+
+
+c_inc_pat = re.compile(r'^\s*#\s*include ["<](?P<fname>.+)[">]')
+
+def find_dependencies(source_path):
+    pattern = None
+    if re.search(r'\.(c|h|cpp|hpp|cc)$', source_path, re.IGNORECASE):
+        pattern = c_inc_pat
+    elif re.search(r'\.(f|for|f\d\d)$', source_path, re.IGNORECASE):
+        pattern = f_inc_pat
+    if pattern is not None and os.path.exists(source_path):
+        with open(source_path, 'r') as ff:
+            for line in ff:
+                match = pattern.search(line)
+                if match:
+                    fname = match.group('fname')
+                    if os.path.exists(fname):
+                        yield fname
+
 
