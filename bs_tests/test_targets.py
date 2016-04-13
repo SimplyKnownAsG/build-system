@@ -250,6 +250,16 @@ class LinkedObjectTests(TargetTestSkeleton):
         self.so = bs.SharedLibrary('temphello', 'tempmain.c', bs.Source('temphello.c'))
         self.a = bs.StaticLibrary('temphello', 'tempmain.c', bs.Source('temphello.c'))
 
+    def test_init_with_list(self):
+        sources = ['tempmain.c', 'tempa.c', 'tempb.c']
+        exe = bs.Executable('temphello', sources)
+        self.assertEqual(3, len(exe))
+
+    def test_init_with_args(self):
+        sources = ['tempmain.c', 'tempa.c', 'tempb.c']
+        exe = bs.Executable('temphello', *sources)
+        self.assertEqual(3, len(exe))
+
     def test_name(self):
         self.assertEqual('temphello', self.so.name)
         self.assertEqual('temphello', self.a.name)

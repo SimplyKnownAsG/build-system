@@ -200,6 +200,8 @@ class _LinkedObject(_Target, _CompiledMixin):
         self._name = name
         if isinstance(dependencies, basestring):
             dependencies = [dependencies]
+        elif len(dependencies) == 1 and isinstance(dependencies, (list, tuple)):
+            dependencies = dependencies[0]
         for dep in dependencies:
             if isinstance(dep, _Target):
                 self.append(dep)
