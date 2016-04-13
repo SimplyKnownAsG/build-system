@@ -47,21 +47,37 @@ def clean(fname):
         dirname = os.path.dirname(dirname)
 
 
+swig_inc_pat = re.compile(r'^\s*%\s*include ["<](?P<fname>.+)[">]')
+
 c_inc_pat = re.compile(r'^\s*#\s*include ["<](?P<fname>.+)[">]')
+c_ext_pat = re.compile(r'\.(c|h|cpp|hpp|cc)$', re.IGNORECASE)
+
+fortran_inc_pat = re.compile(r'^\s*use (?P<fname>[0-9a-zA-Z_]+)')
+fortran_ext_pat = re.compile(r'\.(f|for|f[0-9]{2})$', re.IGNORECASE)
 
 def find_dependencies(source_path):
-    pattern = None
-    if re.search(r'\.(c|h|cpp|hpp|cc)$', source_path, re.IGNORECASE):
-        pattern = c_inc_pat
-    elif re.search(r'\.(f|for|f\d\d)$', source_path, re.IGNORECASE):
-        pattern = f_inc_pat
-    if pattern is not None and os.path.exists(source_path):
+    inc_pat = None
+    fname_matches = None
+    if c_ext_pat.search(source_path):
+        inc_pat = c_inc_pat
+        fname_matches = lambda fn, lf: fn == lf
+    elif fortran_ext_pat.search(source_path):
+        inc_pat = fortran_inc_pat
+        fname_matches = lambda fn, lf: fn == lf.split('.')[0] and fortran_ext_pat.search(lf)
+    elif source_path.endswith('.i'):
+        inc_pat = swig_inc_pat
+        fname_matches = lambda fn, lf: fn == lf
+    if inc_pat is not None and os.path.exists(source_path):
+        local_files = glob.glob(os.path.join(os.path.dirname(source_path), '*'))
         with open(source_path, 'r') as ff:
             for line in ff:
-                match = pattern.search(line)
-                if match:
-                    fname = match.group('fname')
-                    if os.path.exists(fname):
-                        yield fname
+                try:
+                    fname = inc_pat.search(line).group('fname')
+                    for local_file in local_files:
+                        if fname_matches(fname, local_file):
+                            yield local_file
+                            break
+                except AttributeError:
+                    pass
 
 

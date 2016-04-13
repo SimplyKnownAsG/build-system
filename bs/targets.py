@@ -43,7 +43,7 @@ class _Target(object):
         return len(self._children)
 
     def __getitem__(self, index):
-        return self._children[0]
+        return self._children[index]
 
     def append(self, item):
         if not isinstance(item, _Target):
@@ -80,11 +80,11 @@ class Source(_Target):
 
     @property
     def name(self):
-        return self._path
+        return self.path
 
     @property
     def path(self):
-        return self.name
+        return self._path
 
     def find_dependencies(self):
         for fname in bs.find_dependencies(self.path):
@@ -130,53 +130,39 @@ class Object(_Target, _CompiledMixin):
 
 class SwigSource(Source):
 
-    def __init__(self, interface_file, *dependencies):
-        _Target.__init__(self, interface_file, *dependencies)
-        self.interface_file = interface_file
+    def __init__(self, interface_file):
+        _Target.__init__(self)
         if interface_file[-2:] != '.i':
             logger.warning('{} should be initialized with an interface file as the first argument; expected it to end '
                 'with `.i`')
         self.args = []
         self.cpp = False
         self.target_language = None
+        self.append(bs.Source(interface_file))
+        for dep_path in bs.find_dependencies(interface_file):
+            self.append(Source(dep_path))
 
     @property
-    def needs_updating(self):
-        my_mtime = self.mtime
-        # the dependencies of a SWIG source, are the sources of the object files. Since
-        # the dependencies are converted to Object(s), we need to grab their 1st dependency
-        # which is the actual source file.
-        result = any(my_mtime <= dep[0].mtime for dep in self)
-        # also need to consider the interface file
-        result |= my_mtime <= os.path.getmtime(self.interface_file)
-        # yes, I realize this could have been done in one line
-        return result
+    def mtime(self):
+        return min(bs.get_mtime(self.path), bs.get_mtime(self.header))
 
     @property
     def name(self):
-        output = os.path.splitext(self.interface_file)[0] + '_wrap.c'
-        if self.cpp:
-            output += 'xx'
-        return output
-
-    @name.setter
-    def name(self, val):
-        pass
+        return os.path.splitext(self[0].path)[0]
 
     @property
-    def output(self):
-        output = os.path.splitext(self.interface_file)[0] + '_wrap.c'
+    def path(self):
+        path = self.name + '_wrap.c'
         if self.cpp:
-            output += 'xx'
-        return output
-
-    @output.setter
-    def output(self, val):
-        pass
+            path += 'xx'
+        return path
 
     @property
     def header(self):
-        return os.path.splitext(self.interface_file)[0] + '_wrap.h'
+        path = self.name + '_wrap.h'
+        if self.cpp:
+            path += 'xx'
+        return path
 
     def create(self):
         from bs import compilers_and_linkers
@@ -189,7 +175,7 @@ class SwigSource(Source):
             if self.target_language is None:
                 logger.error('You must specify a target language for a SwigSource\n'
                         'This can be done in the `{}` file by setting the SwigSource.target_language attribute',
-                        OBJECTIVES_FILE)
+                        bs.TARGETS_FILE)
             cmd = ['swig', '-{}'.format(self.target_language)]
             if self.cpp:
                 cmd.append('-c++')

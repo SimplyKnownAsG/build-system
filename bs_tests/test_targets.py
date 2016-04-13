@@ -9,7 +9,7 @@ import bs
 class TargetTestSkeleton(unittest.TestCase):
     '''class to make sure everything is tested, gets deleted later on'''
     def tearDown(self):
-        for fname in glob.glob('temp-*'):
+        for fname in glob.glob('temp*'):
             os.remove(fname)
 
     def test_name(self):
@@ -68,7 +68,7 @@ class TestSource(TargetTestSkeleton):
         self.assertEqual(src2, self.target)
         self.assertNotEqual(id(src2), id(self.target))
 
-    def test_find_dependencies(self):
+    def test_find_c_dependencies(self):
         bs.touch('temp-existing.h')
         bs.touch('temp-existing-fake.h')
         with open(self.target.path, 'w') as ff:
@@ -81,6 +81,22 @@ class TestSource(TargetTestSkeleton):
         self.assertEqual(1, len(self.target))
         self.assertEqual('temp-existing.h', self.target[0].path)
         self.assertTrue(self.target.needs_updating)
+
+    def test_find_fortran_dependencies(self):
+        target = bs.Source('temp_thing.f')
+        bs.touch('temp_existing.f')
+        bs.touch('temp_existing90.f90')
+        bs.touch('temp_existing_fake.h')
+        with open(target.path, 'w') as ff:
+            ff.write('  use temp_existing\n')
+            ff.write('  use temp_existing90\n')
+            ff.write('! use temp_existing_fake\n')
+        self.assertFalse(target.needs_updating)
+        target.find_dependencies()
+        self.assertEqual(2, len(target))
+        self.assertEqual('temp_existing.f', target[0].path)
+        self.assertEqual('temp_existing90.f90', target[1].path)
+        self.assertTrue(target.needs_updating)
 
 
 class TargetTests(unittest.TestCase):
@@ -174,35 +190,56 @@ class ObjectTests(TargetTestSkeleton):
         self.assertNotEqual(id(src2), id(self.target_c))
 
 
-@unittest.skip('needs Object')
 class SwigSourceTests(TargetTestSkeleton):
 
     def setUp(self):
-        self.target = bs.SwigSource('bacon.i')
+        bs.touch('temppork.h')
+        with open('tempbacon.i', 'w') as ff:
+            ff.write('%include "temppork.h"')
+        self.target = bs.SwigSource('tempbacon.i')
+
+    def test_name(self):
+        self.assertEqual('tempbacon', self.target.name)
 
     def test_path(self):
-        self.assertEqual('temp-thing.cpp', self.target.path)
+        self.assertEqual('tempbacon_wrap.c', self.target.path)
+        self.assertEqual('tempbacon_wrap.h', self.target.header)
+        self.target.cpp = True
+        self.assertEqual('tempbacon_wrap.cxx', self.target.path)
+        self.assertEqual('tempbacon_wrap.hxx', self.target.header)
 
     def test_mtime(self):
         self.assertEqual(self.target.mtime, -1)
+        bs.touch(self.target.path)
+        self.assertEqual(self.target.mtime, -1)
+        bs.touch(self.target.header)
+        self.assertGreater(self.target.mtime, 0)
 
     def test_needs_updating(self):
-        self.assertFalse(self.target.needs_updating)
+        self.assertTrue(self.target.needs_updating)
 
         bs.touch(self.target.path)
+        while self.target[0].mtime >= self.target.mtime:
+            bs.touch(self.target.path)
+            bs.touch(self.target.header)
+
         self.assertFalse(self.target.needs_updating)
-        self.assertNotEqual(self.target.mtime, -1)
+
+        bs.clean(self.target.header) # if either file is deleted, we need to update
+        self.assertTrue(self.target.needs_updating)
 
     def test_append(self):
         '''Source.append fails'''
-        with self.assertRaises(NotImplementedError):
+        with self.assertRaises(TypeError):
             self.target.append('hi')
+        self.target.append(bs.Source('s'))
 
     def test_iter(self):
-        self.assertEqual(0, len(list(iter(self.target))))
+        self.assertEqual('tempbacon.i', self.target[0].path)
+        self.assertEqual('temppork.h', self.target[1].path)
 
     def test_equal(self):
-        src2 = bs.Source(self.target.path)
+        src2 = bs.SwigSource(self.target[0].path)
         self.assertEqual(src2, self.target)
         self.assertNotEqual(id(src2), id(self.target))
 
