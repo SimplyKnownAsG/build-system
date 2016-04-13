@@ -1,6 +1,5 @@
 
 import os
-import shutil
 
 TARGETS_FILE = 'objectives.py'
 

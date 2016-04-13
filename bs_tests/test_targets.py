@@ -284,8 +284,8 @@ class LinkedObjectTests(TargetTestSkeleton):
 
     def test_iter(self):
         for target in [self.so, self.a]:
-            self.assertEqual('tempmain.c', target[0].path)
-            self.assertEqual('temphello.c', target[1].path)
+            self.assertEqual('./obj/tempmain.c.obj', target[0].path)
+            self.assertEqual('./obj/temphello.c.obj', target[1].path)
 
     def test_equal(self):
         self.assertEqual(self.so.name, self.a.name)

@@ -73,25 +73,25 @@ class CMDThing(object):
 
         if CLEAN:
             for item in objective.flattened_dependencies():
-                if not isinstance(item, bs.Source) and os.path.exists(item.output):
-                    print('removing {}'.format(item.output))
-                    os.remove(item.output)
+                if not isinstance(item, bs.Source) and os.path.exists(item.path):
+                    print('removing {}'.format(item.path))
+                    os.remove(item.path)
             return
 
         if not LIST and not GRAPH and not FLATTEN:
-            full_cmd = [self.command] + self.options
+            cmd_start = [self.command] + self.options
             for pp in self.paths:
-                full_cmd.append('{}{}'.format(self.path_switch, pp))
+                cmd_start.append('{}{}'.format(self.path_switch, pp))
 
             for item in objective.flattened_dependencies():
                 if item.needs_updating:
-                    output_dir = os.path.dirname(item.output)
-                    if not os.path.exists(output_dir):
+                    output_dir = os.path.dirname(item.path)
+                    if output_dir and not os.path.exists(output_dir):
                         os.makedirs(output_dir)
-                    specific_command = list(full_cmd)
+                    specific_command = list(cmd_start)
                     for dep in item:
-                        specific_command.append(dep.output)
-                    specific_command.append('{}{}'.format(self.output_switch, item.output))
+                        specific_command.append(dep.path)
+                    specific_command.append('{}{}'.format(self.output_switch, item.path))
                     specific_command.extend(self.post_options)
                     print('{}'.format(' '.join(specific_command)))
                     try:

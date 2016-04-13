@@ -64,7 +64,7 @@ class _Target(object):
         '''This flattens until it reaches a library; theoretically a library would already be built'''
         flat = []
         for dep in self:
-            if isinstance(dep, _LinkedObject):
+            if isinstance(dep, LinkedObject):
                 # _Library dependencies are built into the library, so they wouldn't need to be built again
                 continue
             flat.extend(dep.flattened_dependencies())
@@ -179,10 +179,10 @@ class SwigSource(Source):
             cmd = ['swig', '-{}'.format(self.target_language)]
             if self.cpp:
                 cmd.append('-c++')
-            cmd.extend(['-o', self.name])
+            cmd.extend(['-o', self.path])
             cmd.extend(['-oh', self.header])
             cmd.extend(self.args)
-            cmd.append(self.interface_file)
+            cmd.append(self[0].path)
             print(' '.join(cmd))
             try:
                 subprocess.check_call(cmd)
@@ -190,7 +190,7 @@ class SwigSource(Source):
                 logger.error('subprocess call failed')
 
 
-class _LinkedObject(_Target, _CompiledMixin):
+class LinkedObject(_Target, _CompiledMixin):
 
     DIR = config.ConfigItem('--lib-dir', './bin/', 'directory to generate libraries')
     
@@ -203,10 +203,14 @@ class _LinkedObject(_Target, _CompiledMixin):
         elif len(dependencies) == 1 and isinstance(dependencies, (list, tuple)):
             dependencies = dependencies[0]
         for dep in dependencies:
-            if isinstance(dep, _Target):
+            if isinstance(dep, Source):
+                self.append(Object(dep))
+            elif isinstance(dep, _CompiledMixin):
                 self.append(dep)
             elif isinstance(dep, basestring):
-                self.append(Source(dep))
+                self.append(Object(Source(dep)))
+            else:
+                raise TypeError('Do not know how to interpret {}'.format(dep))
 
     @property
     def path(self):
@@ -217,17 +221,17 @@ class _LinkedObject(_Target, _CompiledMixin):
         return self._name
 
 
-class SharedLibrary(_LinkedObject):
+class SharedLibrary(LinkedObject):
 
     EXT = config.ConfigItem('--shared-library-ext', '.so', 'shared object extension')
 
 
-class StaticLibrary(_LinkedObject):
+class StaticLibrary(LinkedObject):
 
     EXT = config.ConfigItem('--static-library-ext', '.a', 'static library extension')
 
 
-class Executable(_LinkedObject):
+class Executable(LinkedObject):
 
     DIR = config.ConfigItem('--exec-dir', './bin/', 'directory to generate libraries')
 
