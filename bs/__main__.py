@@ -1,3 +1,4 @@
+import sys
 
 import click
 import sys
@@ -10,8 +11,13 @@ command = sys.argv[1] if len(sys.argv) >= 2 else 'build'
 # load the current user configuration
 config.load()
 
-@click.group(name='bs', help='build system')
+@click.group(name='bs')
 def cli():
+    '''
+    BUILD SYSTEM
+
+    an extraordinarily dumb build tool.
+    '''
     pass
 
 @cli.command()
@@ -76,5 +82,5 @@ def clean(dry_run):
     bs.CLEAN = True
     exec(compile(open(bs.TARGETS_FILE).read(), bs.TARGETS_FILE, 'exec'))
 
-cli(prog_name='bs')
+cli(prog_name='bs', args=['build'] if len(sys.argv) == 1 else sys.argv[1:])
 
