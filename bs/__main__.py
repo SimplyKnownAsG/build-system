@@ -81,8 +81,8 @@ def list(flatten, graph, all):
         is_flag=True)
 def clean(dry_run):
     '''clean all output files'''
-    load_config()
     bs.cd_root()
+    load_config()
     bs.CLEAN = True
     exec(compile(open(bs.TARGETS_FILE).read(), bs.TARGETS_FILE, 'exec'))
 
