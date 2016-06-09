@@ -182,7 +182,7 @@ class SwigSource(Source):
         if bs.CLEAN:
             for ff in [self.header, self.path]:
                 if os.path.exists(ff):
-                    print('removing {}'.format(ff))
+                    logger.info('removing {}'.format(ff))
                     os.remove(ff)
         elif self.needs_updating:
             if self.target_language is None:
@@ -196,7 +196,7 @@ class SwigSource(Source):
             cmd.extend(['-oh', self.header])
             cmd.extend(self.args)
             cmd.append(self[0].path)
-            print(' '.join(cmd))
+            logger.info(' '.join(cmd))
             try:
                 subprocess.check_call(cmd)
             except subprocess.CalledProcessError:

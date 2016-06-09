@@ -29,6 +29,11 @@ def warning(msg_fmt, *args):
     _format_message('WARNING', msg_fmt, *args)
 
 
+def info(msg_fmt, *args):
+    '''Issue a warning message, and continue on with life.'''
+    _format_message('INFO', msg_fmt, *args)
+
+
 def internal_error(msg_fmt, *args):
     '''Issue a message caused by a programming error, and terminate the program.'''
     _format_message('INTERNAL ERROR', msg_fmt, *args)

@@ -4,6 +4,7 @@ import re
 import shutil
 
 import bs
+from bs import logger
 
 def get_mtime(path):
     try:
@@ -16,7 +17,15 @@ def copy(source, destination):
     if bs.CLEAN:
         clean(destination)
     elif os.path.exists(source) and get_mtime(destination) < get_mtime(source):
-        print('copying {} -> {}'.format(source, destination))
+        logger.info('copying {} -> {}'.format(source, destination))
+        shutil.copy(source, destination)
+
+def test():
+    if bs.CLEAN:
+        logger.info('not running tests')
+        clean(destination)
+    elif os.path.exists(source) and get_mtime(destination) < get_mtime(source):
+        logger.info('copying {} -> {}'.format(source, destination))
         shutil.copy(source, destination)
 
 
@@ -33,7 +42,7 @@ def touch(fname):
 def clean(fname):
     try:
         os.remove(fname)
-        print('removed {}'.format(fname))
+        logger.info('removed {}'.format(fname))
     except:
         pass # who cares?
 
@@ -47,7 +56,7 @@ def clean(fname):
             break
         try:
             os.rmdir(dirname)
-            print('removed {}'.format(fname))
+            logger.info('removed {}'.format(fname))
         except:
             break # there was a hidden file we didn't see
         dirname = os.path.dirname(dirname)
@@ -85,5 +94,4 @@ def find_dependencies(source_path):
                             break
                 except AttributeError:
                     pass
-
 

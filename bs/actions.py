@@ -1,11 +1,12 @@
-from __future__ import absolute_import, print_function
+from __future__ import absolute_import
 
 import inspect
 import os
 import shutil
 
-from bs import config
 import bs
+from bs import config
+from bs import logger
 
 
 class Action(object):
@@ -37,7 +38,7 @@ class Demo(Action):
                 dest = os.path.join(base.replace(demo_root, '.'), ff)
                 if not os.path.exists(os.path.dirname(dest)):
                     os.makedirs(os.path.dirname(dest))
-                print('  copy {} -> {}'.format(src, dest))
+                logger.info('  copy {} -> {}'.format(src, dest))
                 shutil.copy(src, dest)
 
 
@@ -57,7 +58,7 @@ class Config(Action):
 
     def invoke(self, args):
         if args.list:
-            config.print_config()
+            config.logger.info_config()
             exit(0)
         config.save()
 

@@ -1,4 +1,4 @@
-from __future__ import absolute_import, print_function
+from __future__ import absolute_import
 
 import os
 import subprocess
@@ -52,18 +52,17 @@ class CMDThing(object):
 
     def run(self, objective):
         if bs.LIST:
-            print(objective)
+            logger.info(str(objective))
             for item in objective:
-                if LIST_ALL or not isinstance(item, bs.Object):
-                    print('    {}'.format(item))
+                logger.info('    {}'.format(item))
         # if bs.GRAPH:
         #     raise NotImplementedError
-        # if bs.FLATTEN:
-        #     print('') # new line for separation
-        #     print('    flattened dependencies -- also lists sources')
-        #     print('    ----------------------')
-        #     for item in objective.flattened_dependencies():
-        #         print('    {}'.format(item))
+        if bs.LIST:
+            logger.info('') # new line for separation
+            logger.info('    flattened dependencies -- also lists sources')
+            logger.info('    ----------------------')
+            for item in objective.flattened_dependencies():
+                logger.info('    {}'.format(item))
 
         if bs.CLEAN:
             for item in objective.flattened_dependencies():
@@ -84,7 +83,7 @@ class CMDThing(object):
                         specific_command.append(dep.path)
                     specific_command.append('{}{}'.format(self.output_switch, item.path))
                     specific_command.extend(self.post_options)
-                    print('{}'.format(' '.join(specific_command)))
+                    logger.info('{}'.format(' '.join(specific_command)))
                     try:
                         subprocess.check_call(specific_command)
                     except subprocess.CalledProcessError:

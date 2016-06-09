@@ -4,12 +4,11 @@ import click
 import sys
 
 import bs
-from bs import config
+from bs.config import load as load_config
+from bs import logger
 
 command = sys.argv[1] if len(sys.argv) >= 2 else 'build'
 
-# load the current user configuration
-config.load()
 
 @click.group(name='bs')
 def cli():
@@ -31,7 +30,7 @@ def demo():
             dest = os.path.join(base.replace(demo_root, '.'), ff)
             if not os.path.exists(os.path.dirname(dest)):
                 os.makedirs(os.path.dirname(dest))
-            print('  copy {} -> {}'.format(src, dest))
+            logger.info('  copy {} -> {}'.format(src, dest))
             shutil.copy(src, dest)
 
 
@@ -39,6 +38,8 @@ def demo():
 @click.option('-l', '--list', is_flag=True, help='list configuration items')
 def config(list_):
     '''Edit or intiialize the local configration'''
+    bs.cd_root()
+    load_config()
     if args.list:
         config.print_config()
     else:
@@ -50,6 +51,8 @@ def config(list_):
         is_flag=True)
 def build(debug):
     '''build whatever build-system knows about'''
+    bs.cd_root()
+    load_config()
     bs.BUILD = True
     exec(compile(open(bs.TARGETS_FILE).read(), bs.TARGETS_FILE, 'exec'))
 
@@ -58,17 +61,16 @@ def build(debug):
 @click.option('--flatten', '-F',
         help='Also list flattened objectives (ignores the absence of --all)',
         is_flag=True)
-@click.option('--list', '-l',
-        help='list known objectives, excluding object files, and exit',
-        is_flag=True)
 @click.option('--graph', '-g',
         help='graph known objectives, excluding object files, and exit',
         is_flag=True)
 @click.option('--all', '-a',
-        help='modifies the behavior of list and graph to include all objectives',
+        help='show all objectives',
         is_flag=True)
-def list(flatten, graph, all_):
+def list(flatten, graph, all):
     '''build whatever build-system knows about'''
+    bs.cd_root()
+    load_config()
     bs.LIST = True
     exec(compile(open(bs.TARGETS_FILE).read(), bs.TARGETS_FILE, 'exec'))
 
@@ -79,6 +81,8 @@ def list(flatten, graph, all_):
         is_flag=True)
 def clean(dry_run):
     '''clean all output files'''
+    load_config()
+    bs.cd_root()
     bs.CLEAN = True
     exec(compile(open(bs.TARGETS_FILE).read(), bs.TARGETS_FILE, 'exec'))
 
